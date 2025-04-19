@@ -225,6 +225,10 @@ const generateConsistentResult = (file: File): AnalysisResultType => {
   };
 };
 
+function getRandomTime(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1) + min) * 1000; // Convert to milliseconds
+}
+
 function AnalysisContent() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -273,7 +277,11 @@ function AnalysisContent() {
 
   React.useEffect(() => {
     if (isAnalyzing) {
-      const totalDuration = processingImage ? 30000 : 20000;
+      const isImageFile = processingImage !== null;
+      const totalDuration = isImageFile ? 
+        getRandomTime(20, 45) : // 20-45 seconds for tissue images
+        getRandomTime(40, 130); // 40-130 seconds for medical reports
+
       const progressInterval = setInterval(() => {
         setAnalysisProgress(prev => {
           if (prev >= 100) {
@@ -307,8 +315,11 @@ function AnalysisContent() {
   React.useEffect(() => {
     if (isAnalyzing && currentFileName) {
       const isImageFile = currentFileName.match(/\.(jpg|jpeg|png|gif|bmp)$/i);
-      const totalDuration = isImageFile ? 30000 : 20000;
-      const algorithmDuration = 15000;
+      const totalDuration = isImageFile ? 
+        getRandomTime(20, 45) : // 20-45 seconds for tissue images
+        getRandomTime(40, 130); // 40-130 seconds for medical reports
+        
+      const algorithmDuration = totalDuration * 0.75; // 75% of total time for algorithms
 
       ANALYSIS_ALGORITHMS.forEach((algorithm) => {
         const updateInterval = 50;
@@ -352,7 +363,7 @@ function AnalysisContent() {
           setIsFinalizing(false);
           setIsAnalyzing(false);
           setProcessingImage(null);
-        }, 5000);
+        }, totalDuration * 0.25); // 25% of total time for finalizing
       }, algorithmDuration);
 
     } else {
