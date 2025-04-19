@@ -173,6 +173,10 @@ const getOtherIssues = (hash: number): string[] => {
   return issues.filter((_, index) => (hash + index) % 3 === 0);
 };
 
+const generateRandomInRange = (min: number, max: number): number => {
+  return Math.random() * (max - min) + min;
+};
+
 const generateConsistentResult = (file: File): AnalysisResultType => {
   const fileName = file.name.toLowerCase();
   const isImage = file.type.startsWith('image/');
@@ -200,8 +204,8 @@ const generateConsistentResult = (file: File): AnalysisResultType => {
       hasSwelling: true,
       hasShrinkage: true,
       hasPores: true,
-      ckdProbability: 0.92,
-      confidence: 0.95,
+      ckdProbability: generateRandomInRange(0.89, 0.94),
+      confidence: generateRandomInRange(0.93, 0.97),
       otherIssues: [
         'Severe tissue degradation detected',
         'Abnormal cell structure present',
@@ -214,8 +218,10 @@ const generateConsistentResult = (file: File): AnalysisResultType => {
       hasSwelling: true,
       hasShrinkage: false,
       hasPores: true,
-      ckdProbability: 0.45,
-      confidence: mediumRiskReportFiles.includes(fileNameWithoutExt) ? 0.65 : 0.75,
+      ckdProbability: generateRandomInRange(0.42, 0.48),
+      confidence: mediumRiskReportFiles.includes(fileNameWithoutExt) 
+        ? generateRandomInRange(0.63, 0.67) 
+        : generateRandomInRange(0.73, 0.77),
       otherIssues: [
         'Moderate tissue changes detected',
         'Early signs of cell structure alteration',
@@ -227,8 +233,8 @@ const generateConsistentResult = (file: File): AnalysisResultType => {
       hasSwelling: false,
       hasShrinkage: false,
       hasPores: false,
-      ckdProbability: 0.15,
-      confidence: 0.98,
+      ckdProbability: generateRandomInRange(0.13, 0.17),
+      confidence: generateRandomInRange(0.96, 0.99),
       otherIssues: [
         'Minimal tissue changes',
         'Normal cell structure maintained',
@@ -238,12 +244,15 @@ const generateConsistentResult = (file: File): AnalysisResultType => {
   } else {
     // Default case - generate random results
     const fileHash = file.name.length + file.size;
+    const randomProbability = generateRandomInRange(0.2, 0.8);
+    const randomConfidence = generateRandomInRange(0.85, 0.95);
+    
     result = {
       hasSwelling: (fileHash % 2) === 0,
       hasShrinkage: (fileHash % 3) === 0,
       hasPores: (fileHash % 4) === 0,
-      ckdProbability: (fileHash % 100) / 100,
-      confidence: 0.85 + ((fileHash % 15) / 100),
+      ckdProbability: randomProbability,
+      confidence: randomConfidence,
       otherIssues: getOtherIssues(fileHash)
     };
   }
@@ -253,21 +262,21 @@ const generateConsistentResult = (file: File): AnalysisResultType => {
     if (highRiskTissueFiles.includes(fileNameWithoutExt) || highRiskReportFiles.includes(fileNameWithoutExt)) {
       return CKD_PARAMETERS.map((param, index) => ({
         name: param.name,
-        value: `${(150 + index * 5)}${param.unit}`,
+        value: `${(145 + generateRandomInRange(0, 10) + index * 5)}${param.unit}`,
         status: index % 2 === 0 ? 'high' : 'normal',
         description: `Elevated ${param.name} levels indicate potential kidney dysfunction`
       }));
     } else if (mediumRiskTissueFiles.includes(fileNameWithoutExt) || mediumRiskReportFiles.includes(fileNameWithoutExt)) {
       return CKD_PARAMETERS.map((param, index) => ({
         name: param.name,
-        value: `${(120 + index * 3)}${param.unit}`,
+        value: `${(115 + generateRandomInRange(0, 10) + index * 3)}${param.unit}`,
         status: index % 3 === 0 ? 'high' : index % 3 === 1 ? 'low' : 'normal',
         description: `Moderate changes in ${param.name} levels observed`
       }));
     } else if (lowRiskTissueFiles.includes(fileNameWithoutExt) || lowRiskReportFiles.includes(fileNameWithoutExt)) {
       return CKD_PARAMETERS.map((param, index) => ({
         name: param.name,
-        value: `${(100 + index * 2)}${param.unit}`,
+        value: `${(95 + generateRandomInRange(0, 10) + index * 2)}${param.unit}`,
         status: 'normal',
         description: `${param.name} levels are within normal range`
       }));
