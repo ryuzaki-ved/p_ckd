@@ -173,60 +173,157 @@ const getOtherIssues = (hash: number): string[] => {
   return issues.filter((_, index) => (hash + index) % 3 === 0);
 };
 
-const getRecommendations = (hash: number): string[] => {
-  const highRiskRecommendations = [
-    'Immediate nephrology consultation required',
-    'Begin intensive kidney function monitoring',
-    'Schedule follow-up biopsy in 2 weeks',
-    'Consider dialysis preparation',
-    'Strict dietary restrictions recommended'
-  ];
-
-  const mediumRiskRecommendations = [
-    'Schedule follow-up examination in 1 month',
-    'Monitor blood pressure daily',
-    'Dietary sodium restriction advised',
-    'Regular blood work every 2 weeks',
-    'Consider preventive medications'
-  ];
-
-  const lowRiskRecommendations = [
-    'Routine follow-up in 3 months',
-    'Maintain healthy diet and exercise',
-    'Monitor blood pressure weekly',
-    'Annual kidney function screening',
-    'Stay well hydrated'
-  ];
-
-  const probability = (hash % 100) / 100;
-  const recommendations = probability > 0.7 ? highRiskRecommendations :
-                         probability > 0.3 ? mediumRiskRecommendations :
-                         lowRiskRecommendations;
-
-  return recommendations.filter((_, index) => (hash + index) % 2 === 0).slice(0, 3);
-};
-
 const generateConsistentResult = (file: File): AnalysisResultType => {
-  const fileHash = file.name.length + file.size;
+  const fileName = file.name.toLowerCase();
   const isImage = file.type.startsWith('image/');
   
+  // High risk tissue images
+  const highRiskTissueFiles = ['tissue_ana1', 'tissue_ana2', 'tissue_ana3', 'tissue_ana4'];
+  // Medium risk tissue images
+  const mediumRiskTissueFiles = ['sim_tiss_1', 'sim_tiss_2', 'sim_tiss_3'];
+  // Low risk tissue images
+  const lowRiskTissueFiles = ['l_tiss_1', 'l_tiss_2', 'l_tiss_3'];
+  
+  // High risk medical reports
+  const highRiskReportFiles = ['rep_kid', 'rep_kid_a', 'rep_kid_b', 'rep_kid_c'];
+  // Medium risk medical reports
+  const mediumRiskReportFiles = ['pos_kid_ckd', 'pos_kid_ckd_a', 'pos_kid_ckd_b'];
+  // Low risk medical reports
+  const lowRiskReportFiles = ['kid_ckd_a', 'kid_ckd_b', 'kid_ckd_c'];
+
+  const fileNameWithoutExt = fileName.split('.')[0];
+
+  let result: Partial<AnalysisResultType> = {};
+
+  if (highRiskTissueFiles.includes(fileNameWithoutExt) || highRiskReportFiles.includes(fileNameWithoutExt)) {
+    result = {
+      hasSwelling: true,
+      hasShrinkage: true,
+      hasPores: true,
+      ckdProbability: 0.92,
+      confidence: 0.95,
+      otherIssues: [
+        'Severe tissue degradation detected',
+        'Abnormal cell structure present',
+        'Critical membrane damage observed',
+        'Significant scarring identified'
+      ]
+    };
+  } else if (mediumRiskTissueFiles.includes(fileNameWithoutExt) || mediumRiskReportFiles.includes(fileNameWithoutExt)) {
+    result = {
+      hasSwelling: true,
+      hasShrinkage: false,
+      hasPores: true,
+      ckdProbability: 0.45,
+      confidence: mediumRiskReportFiles.includes(fileNameWithoutExt) ? 0.65 : 0.75,
+      otherIssues: [
+        'Moderate tissue changes detected',
+        'Early signs of cell structure alteration',
+        'Minor membrane irregularities'
+      ]
+    };
+  } else if (lowRiskTissueFiles.includes(fileNameWithoutExt) || lowRiskReportFiles.includes(fileNameWithoutExt)) {
+    result = {
+      hasSwelling: false,
+      hasShrinkage: false,
+      hasPores: false,
+      ckdProbability: 0.15,
+      confidence: 0.98,
+      otherIssues: [
+        'Minimal tissue changes',
+        'Normal cell structure maintained',
+        'Healthy membrane integrity'
+      ]
+    };
+  } else {
+    // Default case - generate random results
+    const fileHash = file.name.length + file.size;
+    result = {
+      hasSwelling: (fileHash % 2) === 0,
+      hasShrinkage: (fileHash % 3) === 0,
+      hasPores: (fileHash % 4) === 0,
+      ckdProbability: (fileHash % 100) / 100,
+      confidence: 0.85 + ((fileHash % 15) / 100),
+      otherIssues: getOtherIssues(fileHash)
+    };
+  }
+
+  // Generate parameters based on risk level
+  const generateRiskBasedParameters = () => {
+    if (highRiskTissueFiles.includes(fileNameWithoutExt) || highRiskReportFiles.includes(fileNameWithoutExt)) {
+      return CKD_PARAMETERS.map((param, index) => ({
+        name: param.name,
+        value: `${(150 + index * 5)}${param.unit}`,
+        status: index % 2 === 0 ? 'high' : 'normal',
+        description: `Elevated ${param.name} levels indicate potential kidney dysfunction`
+      }));
+    } else if (mediumRiskTissueFiles.includes(fileNameWithoutExt) || mediumRiskReportFiles.includes(fileNameWithoutExt)) {
+      return CKD_PARAMETERS.map((param, index) => ({
+        name: param.name,
+        value: `${(120 + index * 3)}${param.unit}`,
+        status: index % 3 === 0 ? 'high' : index % 3 === 1 ? 'low' : 'normal',
+        description: `Moderate changes in ${param.name} levels observed`
+      }));
+    } else if (lowRiskTissueFiles.includes(fileNameWithoutExt) || lowRiskReportFiles.includes(fileNameWithoutExt)) {
+      return CKD_PARAMETERS.map((param, index) => ({
+        name: param.name,
+        value: `${(100 + index * 2)}${param.unit}`,
+        status: 'normal',
+        description: `${param.name} levels are within normal range`
+      }));
+    }
+    return undefined;
+  };
+
+  // Generate recommendations based on risk level
+  const generateRiskBasedRecommendations = () => {
+    if (highRiskTissueFiles.includes(fileNameWithoutExt) || highRiskReportFiles.includes(fileNameWithoutExt)) {
+      return [
+        'Immediate nephrology consultation required',
+        'Begin intensive kidney function monitoring',
+        'Schedule follow-up biopsy within 1 week',
+        'Consider dialysis preparation',
+        'Strict dietary restrictions recommended'
+      ];
+    } else if (mediumRiskTissueFiles.includes(fileNameWithoutExt) || mediumRiskReportFiles.includes(fileNameWithoutExt)) {
+      return [
+        'Schedule follow-up examination in 2 weeks',
+        'Monitor blood pressure daily',
+        'Moderate dietary restrictions advised',
+        'Regular blood work every month',
+        'Consider preventive medications'
+      ];
+    } else {
+      return [
+        'Routine follow-up in 3 months',
+        'Maintain current diet and exercise',
+        'Monitor blood pressure weekly',
+        'Annual kidney function screening',
+        'Continue normal hydration'
+      ];
+    }
+  };
+
   return {
-    hasSwelling: (fileHash % 2) === 0,
-    hasShrinkage: (fileHash % 3) === 0,
-    hasPores: (fileHash % 4) === 0,
-    otherIssues: getOtherIssues(fileHash),
-    ckdProbability: (fileHash % 100) / 100,
-    confidence: 0.85 + ((fileHash % 15) / 100),
-    recommendations: getRecommendations(fileHash),
-    parameters: !isImage ? generateParameters(fileHash) : undefined,
-    dietaryRecommendations: DIETARY_RECOMMENDATIONS.filter((_, index) => (fileHash + index) % 3 === 0).slice(0, 5),
-    lifestyleRecommendations: LIFESTYLE_RECOMMENDATIONS.filter((_, index) => (fileHash + index) % 3 === 0).slice(0, 5),
+    ...result,
+    parameters: !isImage ? generateRiskBasedParameters() : undefined,
+    recommendations: generateRiskBasedRecommendations(),
+    dietaryRecommendations: DIETARY_RECOMMENDATIONS.slice(0, 5),
+    lifestyleRecommendations: LIFESTYLE_RECOMMENDATIONS.slice(0, 5),
     isImage
   };
 };
 
 function getRandomTime(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1) + min) * 1000; // Convert to milliseconds
+  const longAnalysisFiles = [
+    'tissue_real_1',
+    'tissue_real_2',
+    'tissue_real_3',
+    'tissue_real_4',
+    'tissue_real_5'
+  ];
+  
+  return Math.floor(Math.random() * (max - min + 1) + min) * 1000;
 }
 
 function AnalysisContent() {
@@ -278,9 +375,19 @@ function AnalysisContent() {
   React.useEffect(() => {
     if (isAnalyzing) {
       const isImageFile = processingImage !== null;
-      const totalDuration = isImageFile ? 
-        getRandomTime(20, 45) : // 20-45 seconds for tissue images
-        getRandomTime(40, 130); // 40-130 seconds for medical reports
+      const isLongAnalysisFile = [
+        'tissue_real_1',
+        'tissue_real_2',
+        'tissue_real_3',
+        'tissue_real_4',
+        'tissue_real_5'
+      ].includes(currentFileName);
+
+      const totalDuration = isLongAnalysisFile ? 
+        getRandomTime(300, 360) : 
+        isImageFile ? 
+          getRandomTime(20, 45) : 
+          getRandomTime(40, 130);
 
       const progressInterval = setInterval(() => {
         setAnalysisProgress(prev => {
@@ -310,16 +417,26 @@ function AnalysisContent() {
       setAnalysisProgress(0);
       setAnalysisStep(0);
     }
-  }, [isAnalyzing, processingImage]);
+  }, [isAnalyzing, processingImage, currentFileName]);
 
   React.useEffect(() => {
     if (isAnalyzing && currentFileName) {
       const isImageFile = currentFileName.match(/\.(jpg|jpeg|png|gif|bmp)$/i);
-      const totalDuration = isImageFile ? 
-        getRandomTime(20, 45) : // 20-45 seconds for tissue images
-        getRandomTime(40, 130); // 40-130 seconds for medical reports
+      const isLongAnalysisFile = [
+        'tissue_real_1',
+        'tissue_real_2',
+        'tissue_real_3',
+        'tissue_real_4',
+        'tissue_real_5'
+      ].includes(currentFileName);
+
+      const totalDuration = isLongAnalysisFile ? 
+        getRandomTime(300, 360) : 
+        isImageFile ? 
+          getRandomTime(20, 45) : 
+          getRandomTime(40, 130);
         
-      const algorithmDuration = totalDuration * 0.75; // 75% of total time for algorithms
+      const algorithmDuration = totalDuration * 0.75;
 
       ANALYSIS_ALGORITHMS.forEach((algorithm) => {
         const updateInterval = 50;
@@ -363,7 +480,7 @@ function AnalysisContent() {
           setIsFinalizing(false);
           setIsAnalyzing(false);
           setProcessingImage(null);
-        }, totalDuration * 0.25); // 25% of total time for finalizing
+        }, totalDuration * 0.25);
       }, algorithmDuration);
 
     } else {
